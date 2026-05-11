@@ -1,0 +1,19 @@
+schema: '2.0'
+stages:
+  generate:
+    cmd: python3 scripts/generate_dataset.py
+    deps:
+    - path: ./data/paragraphs.txt
+      hash: md5
+      md5: 9400c364cc2f94f946570b76a88b5b60
+      size: 14368952
+    - path: scripts/generate_dataset.py
+      hash: md5
+      md5: 7a207a098bbc800a05b386a63827c8c1
+      size: 585
+    outs:
+    - path: ./data/tokenized
+      hash: md5
+      md5: 2cad6a64ecd9f765ac281d7f3eecbfa9.dir
+      size: 883
+      nfiles: 3

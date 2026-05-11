@@ -1,0 +1,5 @@
+outs:
+- md5: 9400c364cc2f94f946570b76a88b5b60
+  size: 14368952
+  hash: md5
+  path: paragraphs.txt
