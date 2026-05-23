@@ -1,0 +1,39 @@
+stages:
+  generate:
+    cmd: >
+      python3 scripts/generate_dataset.py
+      --input-path data/paragraphs.txt
+      --output-path data/tokenized
+    deps:
+      - scripts/generate_dataset.py
+      - ./data/paragraphs.txt
+    outs:
+      - ./data/tokenized
+
+  refine_vocabulary:
+    cmd: >
+      python3 ./scripts/refine_vocabulary.py
+      --input-path data/tokenized
+      --output-path data/tokenized_remapped
+    deps:
+      - ./scripts/refine_vocabulary.py
+      - ./data/tokenized
+    outs:
+      - ./data/tokenized_remapped
+      - ./data/tokenized_remapped_metadata.json
+      - ./outs/tokenizer
+
+  train_model:
+    cmd: >
+      python3 ./scripts/train_model.py
+      --input-path data/tokenized_remapped
+      --model-output-path outs/model.pt
+      --artefacts-path outs/training_artefacts
+    deps:
+      - ./shakespeare/torch_model.py
+      - ./scripts/train_model.py
+      - ./data/tokenized_remapped
+      - ./data/tokenized_remapped_metadata.json
+    outs:
+      - ./outs/training_artefacts
+      - ./outs/model.pt

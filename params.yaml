@@ -1,0 +1,18 @@
+generate:
+  model_name: microsoft/deberta-v3-large
+
+train:
+  num_epochs: 100
+  random_seed: 42
+  model_init_params:
+    embed_dim: 256
+    num_heads: 8
+    num_encoder_layers: 3
+    num_decoder_layers: 3
+    ffn_dim: 256
+    max_seq_len: 512
+    dropout: 0.1
+    use_rope_emb: false
+    use_custom_rope_emb: false
+    use_custom_transformer: false
+
