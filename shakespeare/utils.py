@@ -10,3 +10,7 @@ def batch_to(batch: dict[str, Tensor], device: torch_device) -> dict[str, Tensor
         batch[k] = v.to(device)
 
     return batch
+
+
+def get_truthy(s: str) -> bool:
+    return s.lower() in {'1', 'true', 'yes', 'y', 't'}

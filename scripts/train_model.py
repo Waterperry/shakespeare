@@ -1,6 +1,8 @@
 import json
 import os
+import re
 
+from glob import glob
 from pathlib import Path
 from random import seed
 from typing import Any, Callable
@@ -20,14 +22,50 @@ from torch.utils.tensorboard import SummaryWriter
 from transformers import AutoTokenizer
 
 from shakespeare.constants import INFO_STYLE
-from shakespeare.utils import batch_to
+from shakespeare.utils import batch_to, get_truthy
 from shakespeare.torch_model import Model
+
+
+def load_latest_training_checkpoint(artefacts_dir: str) -> Model:
+    """
+    If we are loading a checkpoint, we are either restoring a failed training run
+        or continuing off the end of a previous run, so check for `model.pt` first
+        and then for `model_X.pt` if that does not exist.
+    """
+    artefacts_path: Path = Path(artefacts_dir).resolve()
+    final_model_path: Path = artefacts_path.joinpath("model.pt")
+    checkpoint_glob = artefacts_path.glob(r"model_*.pt")
+    to_use = None
+
+    epoch_matcher = re.compile(r"model_(\d+).pt$")
+
+    if final_model_path.exists():
+        to_use = final_model_path
+    else:
+        curr_max_epoch: int = 0
+        for path in checkpoint_glob:
+            maybe_match: re.Pattern[str] | None = epoch_matcher.search(str(path))
+            if not maybe_match:
+                print(f"no match at {path}")
+                continue
+            epoch_no = int(maybe_match.groups(1))
+            print(f"found epoch {epoch_no} at {path}")
+            if curr_max_epoch < epoch_no:
+                curr_max_epoch = epoch_no
+                to_use = path
+
+    if not to_use:
+        raise RuntimeError("Restore from checkpoint was specified but couldn't find a checkpoint to restore from!")
+
+    with open(to_use, "rb") as f:
+        latest_training_checkpoint = torch.load(f, weights_only=False, map_location=torch.device('cpu'))
+
 
 
 def train_epoch(
     epoch_no: int,
     model: Model,
-    dataloader: DataLoader,
+    dataloader: DataLoader,  # pyright: ignore[reportMissingTypeArgument]
     device: torch.device,
     loss_fn: Callable[[torch.Tensor, torch.Tensor], torch.Tensor],
     optim: Optimizer,
@@ -59,6 +97,10 @@ def main(
     summary_writer = SummaryWriter(log_dir=Path(artefacts_path).joinpath("tensorboard"))
 
     _device_name: str = os.getenv("TRAIN_DEVICE", "cpu")
+    resume_checkpoint: bool = get_truthy(os.getenv("TRAINING_RESUME_CHECKPOINT", "false"))
+    if resume_checkpoint:
+        console.print("Resuming training from checkpoint...", style=INFO_STYLE)
+
     device = torch.device(_device_name)
     console.print(f"Using device {device}", style=INFO_STYLE)
 
