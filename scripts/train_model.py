@@ -107,7 +107,8 @@ def main(
     dataset = DatasetDict.load_from_disk(input_path).with_format("torch").select_columns("input_ids")
     tokenizer = AutoTokenizer.from_pretrained("./outs/tokenizer")
     if model is None:
-        model = Model(vocab_size=ds_metadata["vocab_size"], **params["model_init_params"]).to(device)
+        model = Model(vocab_size=ds_metadata["vocab_size"], **params["model_init_params"])
+    model = model.to(device)
     collate_fn = model.get_collate_function(pad_token_id=tokenizer.pad_token_id)
     train_dataloader = DataLoader(dataset["train"], batch_size=8, collate_fn=collate_fn)  # pyright: ignore[reportArgumentType]
     loss_fn = nn.CrossEntropyLoss()
