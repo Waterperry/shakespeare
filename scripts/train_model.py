@@ -2,7 +2,6 @@ import json
 import os
 import re
 
-from glob import glob
 from pathlib import Path
 from random import seed
 from typing import Any, Callable
@@ -21,45 +20,18 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from transformers import AutoTokenizer
 
-from shakespeare.constants import INFO_STYLE
+from shakespeare.constants import ATTENTION_STYLE, INFO_STYLE, WARNING_STYLE
 from shakespeare.utils import batch_to, get_truthy
 from shakespeare.torch_model import Model
 
 
-def load_latest_training_checkpoint(artefacts_dir: str) -> Model:
-    """
-    If we are loading a checkpoint, we are either restoring a failed training run
-        or continuing off the end of a previous run, so check for `model.pt` first
-        and then for `model_X.pt` if that does not exist.
-    """
-    artefacts_path: Path = Path(artefacts_dir).resolve()
-    final_model_path: Path = artefacts_path.joinpath("model.pt")
-    checkpoint_glob = artefacts_path.glob(r"model_*.pt")
-    to_use = None
+def try_parse_epoch_from_path(path: str) -> int | None:
+    maybe_match = re.search(r"model_(\d+)\.pt", path)
+    if maybe_match:
+        epoch = maybe_match.group(1)
+        return int(epoch)
 
-    epoch_matcher = re.compile(r"model_(\d+).pt$")
-
-    if final_model_path.exists():
-        to_use = final_model_path
-    else:
-        curr_max_epoch: int = 0
-        for path in checkpoint_glob:
-            maybe_match: re.Pattern[str] | None = epoch_matcher.search(str(path))
-            if not maybe_match:
-                print(f"no match at {path}")
-                continue
-            epoch_no = int(maybe_match.groups(1))
-            print(f"found epoch {epoch_no} at {path}")
-            if curr_max_epoch < epoch_no:
-                curr_max_epoch = epoch_no
-                to_use = path
-
-    if not to_use:
-        raise RuntimeError("Restore from checkpoint was specified but couldn't find a checkpoint to restore from!")
-
-    with open(to_use, "rb") as f:
-        latest_training_checkpoint = torch.load(f, weights_only=False, map_location=torch.device('cpu'))
-
+    return None
 
 
 def train_epoch(
@@ -93,38 +65,58 @@ def main(
     model_output_path: str,
     artefacts_path: str,
 ) -> None:
+    # load params and config
+    artefacts_dir: Path = Path(artefacts_path)
+
     console = Console()
     summary_writer = SummaryWriter(log_dir=Path(artefacts_path).joinpath("tensorboard"))
+    params = api.params_show()["train"]
 
     _device_name: str = os.getenv("TRAIN_DEVICE", "cpu")
     resume_checkpoint: bool = get_truthy(os.getenv("TRAINING_RESUME_CHECKPOINT", "false"))
-    if resume_checkpoint:
-        console.print("Resuming training from checkpoint...", style=INFO_STYLE)
+    checkpoint_path: str | None = os.getenv("TRAINING_CHECKPOINT_PATH")
+
+    # seeding the RNG is less useful if we are restoring from checkpoint since results won't be reproducible, but this is a dev measure anyway...
+    seed(params["random_seed"])
+    torch.manual_seed(params["random_seed"])
+
+    curr_epoch: int = 0
+    model: Model | None = None
+    if resume_checkpoint and checkpoint_path:
+        if Path(checkpoint_path).exists():
+            console.print(f"Resuming training from checkpoint at {checkpoint_path}", style=INFO_STYLE)
+            with open(checkpoint_path, "rb") as f:
+                model = torch.load(f, map_location=torch.device("cpu"), weights_only=False)  # NOTE: security vulnerability
+            maybe_curr_epoch = try_parse_epoch_from_path(checkpoint_path)
+            if maybe_curr_epoch is not None:
+                curr_epoch = maybe_curr_epoch
+        else:
+            console.print("`TRAINING_RESUME_CHECKPOINT` was set but no file was found at `TRAINING_CHECKPOINT_PATH`. Ignoring...", style=WARNING_STYLE)
+    elif checkpoint_path:
+        console.print("`TRAINING_CHECKPOINT_PATH` was specified but `TRAINING_RESUME_CHECKPOINT` was not. Ignoring...", style=WARNING_STYLE)
+    elif resume_checkpoint:
+        console.print("`TRAINING_RESUME_CHECKPOINT` was specified but `TRAINING_CHECKPOINT_PATH ` was not. Ignoring...", style=WARNING_STYLE)
 
     device = torch.device(_device_name)
     console.print(f"Using device {device}", style=INFO_STYLE)
-
-    params = api.params_show()["train"]
     console.print(params, style=INFO_STYLE)
-
-    seed(params["random_seed"])
-    torch.manual_seed(params["random_seed"])
 
     with open(f"{input_path}_metadata.json") as f:
         ds_metadata: dict[str, Any] = json.load(f)
 
     dataset = DatasetDict.load_from_disk(input_path).with_format("torch").select_columns("input_ids")
     tokenizer = AutoTokenizer.from_pretrained("./outs/tokenizer")
-    model = Model(vocab_size=ds_metadata["vocab_size"], **params["model_init_params"]).to(device)
+    if model is None:
+        model = Model(vocab_size=ds_metadata["vocab_size"], **params["model_init_params"]).to(device)
     collate_fn = model.get_collate_function(pad_token_id=tokenizer.pad_token_id)
     train_dataloader = DataLoader(dataset["train"], batch_size=8, collate_fn=collate_fn)  # pyright: ignore[reportArgumentType]
     loss_fn = nn.CrossEntropyLoss()
     optim = AdamW(model.parameters())
 
-    for epoch in range(params["num_epochs"]):
+    for epoch in range(curr_epoch, params["num_epochs"]):
         loss = train_epoch(epoch, model, train_dataloader, device, loss_fn, optim)
 
-        with open(f"outs/model_{epoch}.pt", "wb") as f:
+        with open(artefacts_dir.joinpath(f"model_{epoch}.pt"), "wb") as f:
             torch.save(model, f)
 
         summary_writer.add_scalar("loss/item", loss, global_step=epoch)

@@ -30,7 +30,7 @@ stages:
       --model-output-path outs/model.pt
       --artefacts-path outs/training_artefacts
     deps:
-      - ./shakespeare/torch_model.py
+      - ./src/shakespeare/torch_model.py
       - ./scripts/train_model.py
       - ./data/tokenized_remapped
       - ./data/tokenized_remapped_metadata.json
