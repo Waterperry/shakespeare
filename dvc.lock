@@ -1,22 +1,22 @@
 schema: '2.0'
 stages:
   generate:
-    cmd: "python3 scripts/generate_dataset.py --input-path data/paragraphs.txt --output-path
-      data/tokenized\n"
+    cmd: "python3 scripts/generate_dataset.py --input-path data/gutenberg_shakespeare.txt
+      --output-path data/sentences\n"
     deps:
-    - path: ./data/paragraphs.txt
+    - path: ./data/gutenberg_shakespeare.txt
       hash: md5
-      md5: 9400c364cc2f94f946570b76a88b5b60
-      size: 14368952
+      md5: 02f80fa7827df3210e62ffd5ed7e5b42
+      size: 5638483
     - path: scripts/generate_dataset.py
       hash: md5
-      md5: 83c4ca6ce0e20aa0ee3c8b9ad204cc07
-      size: 993
+      md5: aa3efa3db5d35d75614c579c0292ae23
+      size: 3644
     outs:
-    - path: ./data/tokenized
+    - path: ./data/sentences
       hash: md5
-      md5: 9357354f2d41527f125a76f75617a10f.dir
-      size: 34271340
+      md5: a3191e83de4f9860e62dae5756ac3810.dir
+      size: 5688128
       nfiles: 3
   refine_vocabulary:
     cmd: "python3 ./scripts/refine_vocabulary.py --input-path data/tokenized --output-path
@@ -45,4 +45,28 @@ stages:
       hash: md5
       md5: 11ca35ac10e28a0e808f3c6f1dcda631.dir
       size: 699660
+      nfiles: 2
+  fit_tokenizer:
+    cmd: "python3 ./scripts/fit_tokenizer.py --input-path data/sentences --output-path
+      data/tokenized\n"
+    deps:
+    - path: ./data/sentences
+      hash: md5
+      md5: 17991e73bfbb72354b209ff29fe6a585.dir
+      size: 17985712
+      nfiles: 6
+    - path: ./scripts/fit_tokenizer.py
+      hash: md5
+      md5: 9520b7a433f64e336f4605d2bd6a0a7f
+      size: 1708
+    outs:
+    - path: ./data/tokenized
+      hash: md5
+      md5: f2812097254163f3a391e0722498401d.dir
+      size: 11281747
+      nfiles: 7
+    - path: ./outs/tokenizer
+      hash: md5
+      md5: 3a53e7a391695b91e325acd91ab358ae.dir
+      size: 1636182
       nfiles: 2

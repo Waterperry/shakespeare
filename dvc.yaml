@@ -2,38 +2,36 @@ stages:
   generate:
     cmd: >
       python3 scripts/generate_dataset.py
-      --input-path data/paragraphs.txt
-      --output-path data/tokenized
+      --input-path data/gutenberg_shakespeare.txt
+      --output-path data/sentences
     deps:
       - scripts/generate_dataset.py
-      - ./data/paragraphs.txt
+      - ./data/gutenberg_shakespeare.txt
     outs:
-      - ./data/tokenized
+      - ./data/sentences
 
-  refine_vocabulary:
+  fit_tokenizer:
     cmd: >
-      python3 ./scripts/refine_vocabulary.py
-      --input-path data/tokenized
-      --output-path data/tokenized_remapped
+      python3 ./scripts/fit_tokenizer.py
+      --input-path data/sentences
+      --output-path data/tokenized
     deps:
-      - ./scripts/refine_vocabulary.py
-      - ./data/tokenized
+      - ./scripts/fit_tokenizer.py
+      - ./data/sentences
     outs:
-      - ./data/tokenized_remapped
-      - ./data/tokenized_remapped_metadata.json
+      - ./data/tokenized
       - ./outs/tokenizer
 
   train_model:
     cmd: >
       python3 ./scripts/train_model.py
-      --input-path data/tokenized_remapped
+      --input-path data/tokenized
       --model-output-path outs/model.pt
       --artefacts-path outs/training_artefacts
     deps:
       - ./src/shakespeare/torch_model.py
       - ./scripts/train_model.py
-      - ./data/tokenized_remapped
-      - ./data/tokenized_remapped_metadata.json
+      - ./data/tokenized
     outs:
       - ./outs/training_artefacts
       - ./outs/model.pt

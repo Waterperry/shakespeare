@@ -18,7 +18,7 @@ from torch import nn
 from torch.optim import Optimizer, AdamW
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, PreTrainedTokenizerFast
 
 from shakespeare.constants import ATTENTION_STYLE, INFO_STYLE, WARNING_STYLE
 from shakespeare.utils import batch_to, get_truthy
@@ -37,18 +37,26 @@ def try_parse_epoch_from_path(path: str) -> int | None:
 def train_epoch(
     epoch_no: int,
     model: Model,
+    tokenizer: PreTrainedTokenizerFast,
     dataloader: DataLoader,  # pyright: ignore[reportMissingTypeArgument]
     device: torch.device,
     loss_fn: Callable[[torch.Tensor, torch.Tensor], torch.Tensor],
     optim: Optimizer,
 ) -> float:
     _losses = []
+
+    assert tokenizer.bos_token_id is not None
+
     for batch in track(dataloader, description=f"Training (epoch {epoch_no})...", transient=True):
         optim.zero_grad()
-        batch = batch_to(batch, device=device)
-        out = model(batch["input_ids"], batch["input_ids"])
+        batch = batch_to(batch, device=device)["input_ids"]
 
-        targets = batch["input_ids"][:, 1:]  # using [SEP] as [EOS] which is naughty but should work
+        decoder_bos = torch.tile(torch.LongTensor(tokenizer.bos_token_id), [batch.size(0), 1])
+        assert len(decoder_bos.shape) == 2, "Decoder BOS failed to tile correctly"
+        decoder_ins = torch.concat((decoder_bos, batch[:, :-1]), dim=1)
+        out = model(batch, decoder_ins)
+
+        targets = batch[:, 1:]  # using [SEP] as [EOS] which is naughty but should work
         sources = out[:, :-1].permute(0, 2, 1)  # need to switch vocab dist and seq_len for CELoss
 
         loss = loss_fn(sources, targets)
@@ -70,7 +78,9 @@ def main(
 
     console = Console()
     summary_writer = SummaryWriter(log_dir=Path(artefacts_path).joinpath("tensorboard"))
-    params = api.params_show()["train"]
+    all_params = api.params_show()
+    vocab_size = all_params["fit_tokenizer"]["vocab_size"]
+    params = all_params["train"]
 
     _device_name: str = os.getenv("TRAIN_DEVICE", "cpu")
     resume_checkpoint: bool = get_truthy(os.getenv("TRAINING_RESUME_CHECKPOINT", "false"))
@@ -88,8 +98,10 @@ def main(
             with open(checkpoint_path, "rb") as f:
                 model = torch.load(f, map_location=torch.device("cpu"), weights_only=False)  # NOTE: security vulnerability
             maybe_curr_epoch = try_parse_epoch_from_path(checkpoint_path)
-            if maybe_curr_epoch is not None:
-                curr_epoch = maybe_curr_epoch
+            if maybe_curr_epoch is None:
+                console.print("Could not infer current epoch from model path. Will run full training loop.", style=WARNING_STYLE)
+            else:
+                curr_epoch = maybe_curr_epoch + 1  # +1 since existence of model_X.pt means epoch X finished.
         else:
             console.print("`TRAINING_RESUME_CHECKPOINT` was set but no file was found at `TRAINING_CHECKPOINT_PATH`. Ignoring...", style=WARNING_STYLE)
     elif checkpoint_path:
@@ -101,21 +113,18 @@ def main(
     console.print(f"Using device {device}", style=INFO_STYLE)
     console.print(params, style=INFO_STYLE)
 
-    with open(f"{input_path}_metadata.json") as f:
-        ds_metadata: dict[str, Any] = json.load(f)
-
     dataset = DatasetDict.load_from_disk(input_path).with_format("torch").select_columns("input_ids")
     tokenizer = AutoTokenizer.from_pretrained("./outs/tokenizer")
     if model is None:
-        model = Model(vocab_size=ds_metadata["vocab_size"], **params["model_init_params"])
+        model = Model(vocab_size=vocab_size, **params["model_init_params"])
     model = model.to(device)
     collate_fn = model.get_collate_function(pad_token_id=tokenizer.pad_token_id)
-    train_dataloader = DataLoader(dataset["train"], batch_size=8, collate_fn=collate_fn)  # pyright: ignore[reportArgumentType]
+    train_dataloader = DataLoader(dataset["train"], batch_size=params["batch_size"], collate_fn=collate_fn)  # pyright: ignore[reportArgumentType]
     loss_fn = nn.CrossEntropyLoss()
     optim = AdamW(model.parameters())
 
     for epoch in range(curr_epoch, params["num_epochs"]):
-        loss = train_epoch(epoch, model, train_dataloader, device, loss_fn, optim)
+        loss = train_epoch(epoch, model, tokenizer, train_dataloader, device, loss_fn, optim)
 
         with open(artefacts_dir.joinpath(f"model_{epoch}.pt"), "wb") as f:
             torch.save(model, f)
