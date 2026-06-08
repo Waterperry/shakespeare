@@ -13,5 +13,5 @@ wheels/
 .envrc
 .python-version
 notebook.ipynb
-./.ipynb_checkpoints
+.ipynb_checkpoints/
 .vscode/
