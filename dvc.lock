@@ -52,21 +52,21 @@ stages:
     deps:
     - path: ./data/sentences
       hash: md5
-      md5: 17991e73bfbb72354b209ff29fe6a585.dir
-      size: 17985712
-      nfiles: 6
+      md5: a3191e83de4f9860e62dae5756ac3810.dir
+      size: 5688128
+      nfiles: 3
     - path: ./scripts/fit_tokenizer.py
       hash: md5
-      md5: 9520b7a433f64e336f4605d2bd6a0a7f
-      size: 1708
+      md5: eec2f176964ccb5ee56b2cf0c097f0a1
+      size: 2007
     outs:
     - path: ./data/tokenized
       hash: md5
-      md5: f2812097254163f3a391e0722498401d.dir
-      size: 11281747
+      md5: d0cc1964d857e8092dc9781c11e62d4a.dir
+      size: 12246395
       nfiles: 7
     - path: ./outs/tokenizer
       hash: md5
-      md5: 3a53e7a391695b91e325acd91ab358ae.dir
-      size: 1636182
+      md5: b14b10ba4a14ba971fb7282fc5de9fa5.dir
+      size: 1636650
       nfiles: 2

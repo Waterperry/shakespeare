@@ -38,7 +38,6 @@ class Model(nn.Module):
         vocab_size: int,
         embed_dim: int,
         num_heads: int,
-        num_encoder_layers: int,
         num_decoder_layers: int,
         ffn_dim: int,
         max_seq_len: int,
@@ -50,17 +49,16 @@ class Model(nn.Module):
         super().__init__()
 
         # copy init params
-        self._vocab_size = vocab_size 
-        self._embed_dim = embed_dim 
-        self._num_heads = num_heads 
-        self._num_encoder_layers = num_encoder_layers 
-        self._num_decoder_layers = num_decoder_layers 
-        self._ffn_dim = ffn_dim 
-        self._max_seq_len = max_seq_len 
-        self._dropout = dropout 
-        self._use_rope_emb = use_rope_emb 
-        self._use_custom_rope_emb = use_custom_rope_emb 
-        self._use_custom_transformer = use_custom_transformer 
+        self._vocab_size = vocab_size
+        self._embed_dim = embed_dim
+        self._num_heads = num_heads
+        self._num_decoder_layers = num_decoder_layers
+        self._ffn_dim = ffn_dim
+        self._max_seq_len = max_seq_len
+        self._dropout = dropout
+        self._use_rope_emb = use_rope_emb
+        self._use_custom_rope_emb = use_custom_rope_emb
+        self._use_custom_transformer = use_custom_transformer
 
         # actual things
         self._embedding = nn.Embedding(vocab_size, embed_dim)
@@ -76,31 +74,25 @@ class Model(nn.Module):
         if use_custom_transformer:
             raise NotImplementedError  # TODO: implement
         else:
-            self._transformer = nn.Transformer(
-                d_model=embed_dim,
-                nhead=num_heads,
-                num_encoder_layers=num_encoder_layers,
-                num_decoder_layers=num_decoder_layers,
-                dim_feedforward=ffn_dim,
-                dropout=dropout,
-                batch_first=True,
+            self._transformer = nn.TransformerEncoder(
+                nn.TransformerEncoderLayer(
+                    d_model=embed_dim,
+                    nhead=num_heads,
+                    dim_feedforward=ffn_dim,
+                    dropout=dropout,
+                    batch_first=True,
+                ),
+                num_layers=num_decoder_layers,
             )
 
         self._output_proj = nn.Linear(embed_dim, vocab_size)
 
-    def forward(self, src: Tensor, tgt: Tensor) -> Tensor:
-        seq_len_src = src.size(1)
-        seq_len_tgt = tgt.size(1)
-
-        positions_src = torch.arange(seq_len_src, device=src.device).unsqueeze(0)
-        positions_tgt = torch.arange(seq_len_tgt, device=tgt.device).unsqueeze(0)
-
-        src_emb = self._embedding(src) + self._pos_encoding(positions_src)
-        tgt_emb = self._embedding(tgt) + self._pos_encoding(positions_tgt)
-
-        tgt_mask = nn.Transformer.generate_square_subsequent_mask(seq_len_tgt, device=tgt.device)
-
-        out = self._transformer(src_emb, tgt_emb, tgt_mask=tgt_mask)
+    def forward(self, x: Tensor) -> Tensor:
+        seq_len = x.size(1)
+        positions = torch.arange(seq_len, device=x.device).unsqueeze(0)
+        x_emb = self._embedding(x) + self._pos_encoding(positions)
+        causal_mask = nn.Transformer.generate_square_subsequent_mask(seq_len, device=x.device)
+        out = self._transformer(x_emb, mask=causal_mask, is_causal=True)
         return self._output_proj(out)
 
 

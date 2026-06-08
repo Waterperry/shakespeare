@@ -1,4 +1,3 @@
-import json
 import os
 import re
 
@@ -45,19 +44,14 @@ def train_epoch(
 ) -> float:
     _losses = []
 
-    assert tokenizer.bos_token_id is not None
-
     for batch in track(dataloader, description=f"Training (epoch {epoch_no})...", transient=True):
         optim.zero_grad()
         batch = batch_to(batch, device=device)["input_ids"]
 
-        decoder_bos = torch.tile(torch.LongTensor(tokenizer.bos_token_id), [batch.size(0), 1])
-        assert len(decoder_bos.shape) == 2, "Decoder BOS failed to tile correctly"
-        decoder_ins = torch.concat((decoder_bos, batch[:, :-1]), dim=1)
-        out = model(batch, decoder_ins)
+        out = model(batch[:, :-1])
 
-        targets = batch[:, 1:]  # using [SEP] as [EOS] which is naughty but should work
-        sources = out[:, :-1].permute(0, 2, 1)  # need to switch vocab dist and seq_len for CELoss
+        targets = batch[:, 1:]
+        sources = out.permute(0, 2, 1)  # need to switch vocab dist and seq_len for CELoss
 
         loss = loss_fn(sources, targets)
         loss.backward()
@@ -114,16 +108,20 @@ def main(
     console.print(params, style=INFO_STYLE)
 
     dataset = DatasetDict.load_from_disk(input_path).with_format("torch").select_columns("input_ids")
+    train_dataset = dataset["train"]
     tokenizer = AutoTokenizer.from_pretrained("./outs/tokenizer")
     if model is None:
         model = Model(vocab_size=vocab_size, **params["model_init_params"])
     model = model.to(device)
+    model.train()
     collate_fn = model.get_collate_function(pad_token_id=tokenizer.pad_token_id)
-    train_dataloader = DataLoader(dataset["train"], batch_size=params["batch_size"], collate_fn=collate_fn)  # pyright: ignore[reportArgumentType]
+    # drop last so we can use a fixed-size BOS-prefix tensor in the training loop
     loss_fn = nn.CrossEntropyLoss()
     optim = AdamW(model.parameters())
 
     for epoch in range(curr_epoch, params["num_epochs"]):
+        train_dataset = train_dataset.shuffle(params["random_seed"] + epoch)
+        train_dataloader = DataLoader(train_dataset, batch_size=params["batch_size"], collate_fn=collate_fn, drop_last=True)  # pyright: ignore[reportArgumentType]
         loss = train_epoch(epoch, model, tokenizer, train_dataloader, device, loss_fn, optim)
 
         with open(artefacts_dir.joinpath(f"model_{epoch}.pt"), "wb") as f:

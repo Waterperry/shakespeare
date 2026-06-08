@@ -1,0 +1,5 @@
+outs:
+- md5: 02f80fa7827df3210e62ffd5ed7e5b42
+  size: 5638483
+  hash: md5
+  path: gutenberg_shakespeare.txt

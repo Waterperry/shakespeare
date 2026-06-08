@@ -8,3 +8,10 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Custom
+.envrc
+.python-version
+notebook.ipynb
+./.ipynb_checkpoints
+.vscode/
