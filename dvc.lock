@@ -57,16 +57,63 @@ stages:
       nfiles: 3
     - path: ./scripts/fit_tokenizer.py
       hash: md5
-      md5: eec2f176964ccb5ee56b2cf0c097f0a1
-      size: 2007
+      md5: 9182ebb8655bd775679e32bb3d598fff
+      size: 1987
+    params:
+      params.yaml:
+        fit_tokenizer:
+          vocab_size: 512
     outs:
     - path: ./data/tokenized
       hash: md5
-      md5: d0cc1964d857e8092dc9781c11e62d4a.dir
-      size: 12246395
+      md5: 229dee558402f02d0569114472ca5ff7.dir
+      size: 19606625
       nfiles: 7
     - path: ./outs/tokenizer
       hash: md5
-      md5: b14b10ba4a14ba971fb7282fc5de9fa5.dir
-      size: 1636650
+      md5: 657c31b5f898d774e48fabf15a08c4a5.dir
+      size: 29567
       nfiles: 2
+  train_model:
+    cmd: "python3 ./scripts/train_model.py --input-path data/tokenized --model-output-path
+      outs/model.pt --artefacts-path outs/training_artefacts\n"
+    deps:
+    - path: ./data/tokenized
+      hash: md5
+      md5: b9fb7becdfb06f36dc87ec790bab1e9e.dir
+      size: 98200225
+      nfiles: 107
+    - path: ./scripts/train_model.py
+      hash: md5
+      md5: 0ccbcae53e3bb152d262d7d97df4968b
+      size: 6387
+    - path: ./src/shakespeare/torch_model.py
+      hash: md5
+      md5: f59c99c703369ccb11b150eb87f9954c
+      size: 4037
+    params:
+      params.yaml:
+        train:
+          batch_size: 8
+          num_epochs: 100
+          random_seed: 42
+          model_init_params:
+            embed_dim: 256
+            num_heads: 8
+            num_decoder_layers: 3
+            ffn_dim: 256
+            max_seq_len: 512
+            dropout: 0.1
+            use_rope_emb: false
+            use_custom_rope_emb: false
+            use_custom_transformer: false
+    outs:
+    - path: ./outs/model.pt
+      hash: md5
+      md5: 16b76bf5197ef8c3af55515105625fa4
+      size: 9518261
+    - path: ./outs/training_artefacts
+      hash: md5
+      md5: ef06777cceba5cbd05b6d3b328385bd3.dir
+      size: 951830886
+      nfiles: 101

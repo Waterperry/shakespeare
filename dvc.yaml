@@ -15,6 +15,8 @@ stages:
       python3 ./scripts/fit_tokenizer.py
       --input-path data/sentences
       --output-path data/tokenized
+    params:
+      - fit_tokenizer
     deps:
       - ./scripts/fit_tokenizer.py
       - ./data/sentences
@@ -28,6 +30,8 @@ stages:
       --input-path data/tokenized
       --model-output-path outs/model.pt
       --artefacts-path outs/training_artefacts
+    params:
+      - train
     deps:
       - ./src/shakespeare/torch_model.py
       - ./scripts/train_model.py

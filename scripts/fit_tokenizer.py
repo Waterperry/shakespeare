@@ -22,7 +22,7 @@ def main(input_path: str, output_path: str) -> None:
     )
     tokenizer = Tokenizer(BPE(unk_token=special_tokens["unk_token"]))
     tokenizer.normalizer = normalizers.Sequence([NFKC(), StripAccents()])
-    tokenizer.pre_tokenizer = Whitespace()
+    # tokenizer.pre_tokenizer = Whitespace()
     trainer = BpeTrainer(
         vocab_size=params["vocab_size"],
         special_tokens=sorted(special_tokens.values()),
@@ -42,7 +42,7 @@ def main(input_path: str, output_path: str) -> None:
     fast_tokenizer.save_pretrained("outs/tokenizer")
 
     def encode(batch):
-        return {"input_ids": fast_tokenizer.encode(batch["sentence"])}
+        return fast_tokenizer(batch["sentence"])
 
     disable_caching()  # tokenizer will be recognised as unique every time, causing reprocessing to occur (due to cache miss)
     ds = ds.map(encode, batched=True, batch_size=1_024)

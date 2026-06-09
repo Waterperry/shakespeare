@@ -14,7 +14,7 @@ def _padding_collate_fn(
 ) -> dict[str, Tensor]:
     stack_keys = [
         "input_ids",
-        # "attention_mask",
+        "attention_mask",
         # "token_type_ids",
     ]
 
@@ -74,8 +74,8 @@ class Model(nn.Module):
         if use_custom_transformer:
             raise NotImplementedError  # TODO: implement
         else:
-            self._transformer = nn.TransformerEncoder(
-                nn.TransformerEncoderLayer(
+            self._transformer = nn.TransformerDecoder(
+                nn.TransformerDecoderLayer(
                     d_model=embed_dim,
                     nhead=num_heads,
                     dim_feedforward=ffn_dim,
@@ -87,12 +87,29 @@ class Model(nn.Module):
 
         self._output_proj = nn.Linear(embed_dim, vocab_size)
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor, pad_token_id: int | None = None) -> Tensor:
         seq_len = x.size(1)
         positions = torch.arange(seq_len, device=x.device).unsqueeze(0)
         x_emb = self._embedding(x) + self._pos_encoding(positions)
         causal_mask = nn.Transformer.generate_square_subsequent_mask(seq_len, device=x.device)
-        out = self._transformer(x_emb, mask=causal_mask, is_causal=True)
+
+        # ignore padding in tgt sequence
+        tgt_key_padding_mask: Tensor | None = None
+        if pad_token_id is not None:
+            # construct the boolean mask first, but change it to float mask (used additively)
+            # since pytorch emits warning about bool <=> float comparisons
+            tgt_key_padding_mask = (x == pad_token_id).float()
+            tgt_key_padding_mask[tgt_key_padding_mask == 0.] = -torch.inf
+            tgt_key_padding_mask[tgt_key_padding_mask == 1.] = 0.0
+
+        memory = torch.zeros_like(x_emb, device=x_emb.device, requires_grad=False)
+        out = self._transformer(
+            x_emb,
+            memory,
+            tgt_is_causal=True,
+            tgt_mask=causal_mask,
+            tgt_key_padding_mask=tgt_key_padding_mask,
+        )
         return self._output_proj(out)
 
 

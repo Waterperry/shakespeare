@@ -13,7 +13,7 @@ from dvc import api
 from fire import Fire
 from rich.console import Console
 from rich.progress import track
-from torch import nn
+from torch import nn, device as torch_device
 from torch.optim import Optimizer, AdamW
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
@@ -23,6 +23,28 @@ from shakespeare.constants import ATTENTION_STYLE, INFO_STYLE, WARNING_STYLE
 from shakespeare.utils import batch_to, get_truthy
 from shakespeare.torch_model import Model
 
+
+@torch.no_grad
+def generate_from_scratch(
+    model: Model,
+    tokenizer: PreTrainedTokenizerFast,
+    max_len: int,
+    device: torch_device,
+) -> str: 
+    sen_tok_ids: list[list[int]] = [[tokenizer.bos_token_id]]  # pyright: ignore[reportAssignmentType]
+    while len(sen_tok_ids[0]) < max_len:
+        in_tensor = torch.LongTensor(sen_tok_ids).to(device)
+        outs = model(in_tensor)
+        out_probs = outs[-1, -1]
+        # out_probs[tokenizer.bos_token_id] = 0.
+        # out_probs[tokenizer.pad_token_id] = 0.
+        out_id = out_probs.argmax().item()
+        sen_tok_ids[0].append(out_id)
+        if out_id == tokenizer.eos_token_id:
+            break
+
+    return "".join(tokenizer.convert_ids_to_tokens(sen_tok_ids[0]))
+    
 
 def try_parse_epoch_from_path(path: str) -> int | None:
     maybe_match = re.search(r"model_(\d+)\.pt", path)
@@ -46,11 +68,10 @@ def train_epoch(
 
     for batch in track(dataloader, description=f"Training (epoch {epoch_no})...", transient=True):
         optim.zero_grad()
-        batch = batch_to(batch, device=device)["input_ids"]
-
-        out = model(batch[:, :-1])
-
-        targets = batch[:, 1:]
+        _batch = batch_to(batch, device=device)
+        input_ids = _batch["input_ids"]
+        out = model(input_ids[:, :-1], pad_token_id=tokenizer.pad_token_id)
+        targets = input_ids[:, 1:]
         sources = out.permute(0, 2, 1)  # need to switch vocab dist and seq_len for CELoss
 
         loss = loss_fn(sources, targets)
@@ -59,6 +80,7 @@ def train_epoch(
         _losses.append(loss.item())
 
     avg_loss: float = float(np.array(_losses).mean())
+    optim.zero_grad()
     return avg_loss
 
 
@@ -107,19 +129,19 @@ def main(
     console.print(f"Using device {device}", style=INFO_STYLE)
     console.print(params, style=INFO_STYLE)
 
-    dataset = DatasetDict.load_from_disk(input_path).with_format("torch").select_columns("input_ids")
+    dataset = DatasetDict.load_from_disk(input_path).with_format("torch").select_columns(["input_ids", "attention_mask"])
     train_dataset = dataset["train"]
     tokenizer = AutoTokenizer.from_pretrained("./outs/tokenizer")
     if model is None:
         model = Model(vocab_size=vocab_size, **params["model_init_params"])
     model = model.to(device)
-    model.train()
     collate_fn = model.get_collate_function(pad_token_id=tokenizer.pad_token_id)
     # drop last so we can use a fixed-size BOS-prefix tensor in the training loop
     loss_fn = nn.CrossEntropyLoss()
     optim = AdamW(model.parameters())
 
     for epoch in range(curr_epoch, params["num_epochs"]):
+        model.train()
         train_dataset = train_dataset.shuffle(params["random_seed"] + epoch)
         train_dataloader = DataLoader(train_dataset, batch_size=params["batch_size"], collate_fn=collate_fn, drop_last=True)  # pyright: ignore[reportArgumentType]
         loss = train_epoch(epoch, model, tokenizer, train_dataloader, device, loss_fn, optim)
@@ -127,8 +149,10 @@ def main(
         with open(artefacts_dir.joinpath(f"model_{epoch}.pt"), "wb") as f:
             torch.save(model, f)
 
+        model.eval()
         summary_writer.add_scalar("loss/item", loss, global_step=epoch)
-        print(f"{epoch:0>5} | {loss:.3e}")
+        generated = generate_from_scratch(model, tokenizer, 15, device)
+        console.print(f"{epoch:0>5} | {loss:.3e} | {generated}")
 
     with open(model_output_path, "wb") as f:
         torch.save(model, f)
