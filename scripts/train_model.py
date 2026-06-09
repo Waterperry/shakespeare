@@ -140,7 +140,7 @@ def main(
     collate_fn = model.get_collate_function(pad_token_id=tokenizer.pad_token_id)
     # drop last so we can use a fixed-size BOS-prefix tensor in the training loop
     loss_fn = nn.CrossEntropyLoss(ignore_index=tokenizer.pad_token_id)
-    optim = AdamW(model.parameters())
+    optim = AdamW(model.parameters(), lr=float(params["learning_rate"]))
 
     for epoch in range(curr_epoch, params["num_epochs"]):
         model.train()

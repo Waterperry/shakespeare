@@ -5,14 +5,15 @@ fit_tokenizer:
   vocab_size: 1024
 
 train:
-  batch_size: 64
-  num_epochs: 100
+  batch_size: 32
+  num_epochs: 10
   random_seed: 42
+  learning_rate: 0.0001
   model_init_params:
     embed_dim: 256
     num_heads: 8
-    num_decoder_layers: 12
-    ffn_dim: 1024
+    num_decoder_layers: 6
+    ffn_dim: 384
     max_seq_len: 512
     dropout: 0.1
     use_rope_emb: false

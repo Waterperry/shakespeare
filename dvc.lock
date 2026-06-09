@@ -66,8 +66,8 @@ stages:
     outs:
     - path: ./data/tokenized
       hash: md5
-      md5: 6c7dfebb387e44471e76b7e682f1d958.dir
-      size: 17761297
+      md5: 953b0b26d27350921c3a493f275da5dd.dir
+      size: 17761249
       nfiles: 7
     - path: ./outs/tokenizer
       hash: md5
