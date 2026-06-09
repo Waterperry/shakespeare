@@ -96,11 +96,7 @@ class Model(nn.Module):
         # ignore padding in tgt sequence
         tgt_key_padding_mask: Tensor | None = None
         if pad_token_id is not None:
-            # construct the boolean mask first, but change it to float mask (used additively)
-            # since pytorch emits warning about bool <=> float comparisons
-            tgt_key_padding_mask = (x == pad_token_id).float()
-            tgt_key_padding_mask[tgt_key_padding_mask == 0.] = -torch.inf
-            tgt_key_padding_mask[tgt_key_padding_mask == 1.] = 0.0
+            tgt_key_padding_mask = torch.where(x == pad_token_id, float('-inf'), 0.0)
 
         memory = torch.zeros_like(x_emb, device=x_emb.device, requires_grad=False)
         out = self._transformer(
