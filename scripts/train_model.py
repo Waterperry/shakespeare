@@ -36,8 +36,6 @@ def generate_from_scratch(
         in_tensor = torch.LongTensor(sen_tok_ids).to(device)
         outs = model(in_tensor)
         out_probs = outs[-1, -1]
-        # out_probs[tokenizer.bos_token_id] = 0.
-        # out_probs[tokenizer.pad_token_id] = 0.
         out_id = out_probs.argmax().item()
         sen_tok_ids[0].append(out_id)
         if out_id == tokenizer.eos_token_id:
@@ -151,7 +149,7 @@ def main(
 
         model.eval()
         summary_writer.add_scalar("loss/item", loss, global_step=epoch)
-        generated = generate_from_scratch(model, tokenizer, 15, device)
+        generated = generate_from_scratch(model, tokenizer, 100, device)
         console.print(f"{epoch:0>5} | {loss:.3e} | {generated}")
 
     with open(model_output_path, "wb") as f:

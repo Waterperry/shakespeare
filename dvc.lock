@@ -62,17 +62,17 @@ stages:
     params:
       params.yaml:
         fit_tokenizer:
-          vocab_size: 512
+          vocab_size: 1024
     outs:
     - path: ./data/tokenized
       hash: md5
-      md5: 229dee558402f02d0569114472ca5ff7.dir
-      size: 19606625
+      md5: 6c7dfebb387e44471e76b7e682f1d958.dir
+      size: 17761297
       nfiles: 7
     - path: ./outs/tokenizer
       hash: md5
-      md5: 657c31b5f898d774e48fabf15a08c4a5.dir
-      size: 29567
+      md5: f10f731933bc94944d65abf0bc674ecd.dir
+      size: 61637
       nfiles: 2
   train_model:
     cmd: "python3 ./scripts/train_model.py --input-path data/tokenized --model-output-path
