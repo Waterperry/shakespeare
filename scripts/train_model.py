@@ -57,6 +57,31 @@ def try_parse_epoch_from_path(path: str) -> int | None:
     return None
 
 
+@torch.no_grad
+def val_epoch(
+    epoch_no: int,
+    model: Model,
+    tokenizer: PreTrainedTokenizerFast,
+    dataloader: DataLoader,  # pyright: ignore[reportMissingTypeArgument]
+    device: torch.device,
+    loss_fn: Callable[[torch.Tensor, torch.Tensor], torch.Tensor],
+) -> float:
+    _losses = []
+
+    for batch in track(dataloader, description=f"Validation (epoch {epoch_no})...", transient=True):
+        _batch = batch_to(batch, device=device)
+        input_ids = _batch["input_ids"]
+        out = model(input_ids[:, :-1], pad_token_id=tokenizer.pad_token_id)
+        targets = input_ids[:, 1:]
+        sources = out.permute(0, 2, 1)  # need to switch vocab dist and seq_len for CELoss
+
+        loss = loss_fn(sources, targets)
+        _losses.append(loss.item())
+
+    avg_loss: float = float(np.array(_losses).mean())
+    return avg_loss
+
+
 def train_epoch(
     epoch_no: int,
     model: Model,
@@ -133,6 +158,7 @@ def main(
 
     dataset = DatasetDict.load_from_disk(input_path).with_format("torch").select_columns(["input_ids", "attention_mask"])
     train_dataset = dataset["train"]
+    val_dataset = dataset["test"]
     tokenizer = AutoTokenizer.from_pretrained("./outs/tokenizer")
     if model is None:
         model = Model(vocab_size=vocab_size, **params["model_init_params"])
@@ -152,7 +178,9 @@ def main(
             torch.save(model, f)
 
         model.eval()
-        summary_writer.add_scalar("loss/item", loss, global_step=epoch)
+        val_dataloader = DataLoader(val_dataset, batch_size=params["batch_size"], collate_fn=collate_fn, drop_last=True)  # pyright: ignore[reportArgumentType]
+        val_loss = val_epoch(epoch, model, tokenizer, val_dataloader, device, loss_fn)
+        summary_writer.add_scalars("loss", {"val": val_loss, "train": loss}, global_step=epoch)
         generated = generate_from_scratch(model, tokenizer, 100, device)
         console.print(f"{epoch:0>5} | {loss:.3e} | {generated}")
 
