@@ -74,8 +74,8 @@ class Model(nn.Module):
         if use_custom_transformer:
             raise NotImplementedError  # TODO: implement
         else:
-            self._transformer = nn.TransformerDecoder(
-                nn.TransformerDecoderLayer(
+            self._transformer = nn.TransformerEncoder(
+                nn.TransformerEncoderLayer(
                     d_model=embed_dim,
                     nhead=num_heads,
                     dim_feedforward=ffn_dim,
@@ -93,18 +93,15 @@ class Model(nn.Module):
         x_emb = self._embedding(x) + self._pos_encoding(positions)
         causal_mask = nn.Transformer.generate_square_subsequent_mask(seq_len, device=x.device)
 
-        # ignore padding in tgt sequence
-        tgt_key_padding_mask: Tensor | None = None
+        src_key_padding_mask: Tensor | None = None
         if pad_token_id is not None:
-            tgt_key_padding_mask = torch.where(x == pad_token_id, float('-inf'), 0.0)
+            src_key_padding_mask = torch.where(x == pad_token_id, float('-inf'), 0.0)
 
-        memory = torch.zeros_like(x_emb, device=x_emb.device, requires_grad=False)
         out = self._transformer(
             x_emb,
-            memory,
-            tgt_is_causal=True,
-            tgt_mask=causal_mask,
-            tgt_key_padding_mask=tgt_key_padding_mask,
+            mask=causal_mask,
+            src_key_padding_mask=src_key_padding_mask,
+            is_causal=True,
         )
         return self._output_proj(out)
 

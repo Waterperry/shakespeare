@@ -30,13 +30,17 @@ def generate_from_scratch(
     tokenizer: PreTrainedTokenizerFast,
     max_len: int,
     device: torch_device,
-) -> str: 
+    temperature: float = 0.8,
+    top_k: int = 50,
+) -> str:
     sen_tok_ids: list[list[int]] = [[tokenizer.bos_token_id]]  # pyright: ignore[reportAssignmentType]
     while len(sen_tok_ids[0]) < max_len:
         in_tensor = torch.LongTensor(sen_tok_ids).to(device)
         outs = model(in_tensor)
-        out_probs = outs[-1, -1]
-        out_id = out_probs.argmax().item()
+        logits = outs[-1, -1] / temperature
+        probs = torch.softmax(logits, dim=-1)
+        top_k_probs, top_k_ids = probs.topk(top_k)
+        out_id = top_k_ids[torch.multinomial(top_k_probs, 1)].item()
         sen_tok_ids[0].append(out_id)
         if out_id == tokenizer.eos_token_id:
             break
