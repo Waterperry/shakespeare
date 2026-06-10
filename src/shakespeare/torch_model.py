@@ -3,6 +3,7 @@ from typing import Any, Callable
 
 import torch
 
+from huggingface_hub import PyTorchModelHubMixin
 from torch import Tensor, nn
 from torch.nested import nested_tensor
 
@@ -32,7 +33,7 @@ def _padding_collate_fn(
 
 
 
-class Model(nn.Module):
+class Model(nn.Module, PyTorchModelHubMixin):
     def __init__(
         self,
         vocab_size: int,

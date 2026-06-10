@@ -28,7 +28,7 @@ stages:
     cmd: >
       python3 ./scripts/train_model.py
       --input-path data/tokenized
-      --model-output-path outs/model.pt
+      --model-output-path outs/model
       --artefacts-path outs/training_artefacts
     params:
       - train

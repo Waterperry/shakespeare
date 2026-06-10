@@ -49,7 +49,7 @@ def generate_from_scratch(
     
 
 def try_parse_epoch_from_path(path: str) -> int | None:
-    maybe_match = re.search(r"model_(\d+)\.pt", path)
+    maybe_match = re.search(r"model_(\d+)", path)
     if maybe_match:
         epoch = maybe_match.group(1)
         return int(epoch)
@@ -144,7 +144,7 @@ def main(
             if maybe_curr_epoch is None:
                 console.print("Could not infer current epoch from model path. Will run full training loop.", style=WARNING_STYLE)
             else:
-                curr_epoch = maybe_curr_epoch + 1  # +1 since existence of model_X.pt means epoch X finished.
+                curr_epoch = maybe_curr_epoch + 1  # +1 since existence of model_X means epoch X finished.
         else:
             console.print("`TRAINING_RESUME_CHECKPOINT` was set but no file was found at `TRAINING_CHECKPOINT_PATH`. Ignoring...", style=WARNING_STYLE)
     elif checkpoint_path:
@@ -174,19 +174,19 @@ def main(
         train_dataloader = DataLoader(train_dataset, batch_size=params["batch_size"], collate_fn=collate_fn, drop_last=True)  # pyright: ignore[reportArgumentType]
         loss = train_epoch(epoch, model, tokenizer, train_dataloader, device, loss_fn, optim)
 
-        with open(artefacts_dir.joinpath(f"model_{epoch}.pt"), "wb") as f:
-            torch.save(model, f)
+        if epoch % 5 == 0:
+            model.save_pretrained(artefacts_dir.joinpath(f"model_{epoch}"))
+            model.eval()
+            val_dataloader = DataLoader(val_dataset, batch_size=params["batch_size"], collate_fn=collate_fn, drop_last=True)  # pyright: ignore[reportArgumentType]
+            val_loss = val_epoch(epoch, model, tokenizer, val_dataloader, device, loss_fn)
+            summary_writer.add_scalars("loss", {"val": val_loss, "train": loss}, global_step=epoch)
+        else:
+            summary_writer.add_scalars("loss", {"train": loss}, global_step=epoch)
 
-        model.eval()
-        val_dataloader = DataLoader(val_dataset, batch_size=params["batch_size"], collate_fn=collate_fn, drop_last=True)  # pyright: ignore[reportArgumentType]
-        val_loss = val_epoch(epoch, model, tokenizer, val_dataloader, device, loss_fn)
-        summary_writer.add_scalars("loss", {"val": val_loss, "train": loss}, global_step=epoch)
         generated = generate_from_scratch(model, tokenizer, 100, device)
         console.print(f"{epoch:0>5} | {loss:.3e} | {generated}")
 
-    with open(model_output_path, "wb") as f:
-        torch.save(model, f)
-
+    model.save_pretrained(model_output_path)
 
 if __name__ == "__main__":
     Fire(main)
