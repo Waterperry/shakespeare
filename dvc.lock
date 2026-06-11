@@ -62,59 +62,60 @@ stages:
     params:
       params.yaml:
         fit_tokenizer:
-          vocab_size: 128
+          vocab_size: 512
     outs:
     - path: ./data/tokenized
       hash: md5
-      md5: 81fedc1b0d3dd22a09d3782ea7ca61b7.dir
-      size: 26485937
+      md5: 6e09a90d66c99ece633ca4d554cd5c8d.dir
+      size: 19606537
       nfiles: 7
     - path: ./outs/tokenizer
       hash: md5
-      md5: 4609ccf1110ee3474aba0db957687766.dir
-      size: 6031
+      md5: 657c31b5f898d774e48fabf15a08c4a5.dir
+      size: 29567
       nfiles: 2
   train_model:
     cmd: "python3 ./scripts/train_model.py --input-path data/tokenized --model-output-path
-      outs/model.pt --artefacts-path outs/training_artefacts\n"
+      outs/model --artefacts-path outs/training_artefacts\n"
     deps:
     - path: ./data/tokenized
       hash: md5
-      md5: bcacfe4801a279d9c41af1cfcaf1d69d.dir
-      size: 25620609
-      nfiles: 17
+      md5: 89eab982af3a53860a96ffdebc51ab27.dir
+      size: 58903337
+      nfiles: 57
     - path: ./scripts/train_model.py
       hash: md5
-      md5: cc41195f413d1b9bb9131b9957855680
-      size: 7751
+      md5: 4295315f4f782f67de00c166141b46e1
+      size: 7713
     - path: ./src/shakespeare/torch_model.py
       hash: md5
-      md5: 50212e19d56cc6aba472044fb104f5bf
-      size: 3598
+      md5: b20b29b52fa6733ad186347e3c6208ba
+      size: 3669
     params:
       params.yaml:
         train:
-          batch_size: 32
-          num_epochs: 10
+          batch_size: 64
+          num_epochs: 50
           random_seed: 42
           learning_rate: 0.0001
           model_init_params:
             embed_dim: 256
             num_heads: 8
             num_decoder_layers: 6
-            ffn_dim: 384
+            ffn_dim: 1024
             max_seq_len: 512
             dropout: 0.1
             use_rope_emb: false
             use_custom_rope_emb: false
             use_custom_transformer: false
     outs:
-    - path: ./outs/model.pt
+    - path: ./outs/model
       hash: md5
-      md5: 0a5b9067694b333bb45d5caa1e9010b3
-      size: 13739263
+      md5: 14972d8251fedb2c09e9a9a2be2400fe.dir
+      size: 20537767
+      nfiles: 3
     - path: ./outs/training_artefacts
       hash: md5
-      md5: 8c2b39083227fa21e6d80f0bfb30e9bb.dir
-      size: 137393654
-      nfiles: 11
+      md5: 0e11c8801028f925b83bb28e8fbbb2c2.dir
+      size: 205380450
+      nfiles: 33

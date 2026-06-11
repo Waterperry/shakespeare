@@ -38,4 +38,4 @@ stages:
       - ./data/tokenized
     outs:
       - ./outs/training_artefacts
-      - ./outs/model.pt
+      - ./outs/model
