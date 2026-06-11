@@ -80,13 +80,13 @@ stages:
     deps:
     - path: ./data/tokenized
       hash: md5
-      md5: 89eab982af3a53860a96ffdebc51ab27.dir
-      size: 58903337
-      nfiles: 57
+      md5: 6e09a90d66c99ece633ca4d554cd5c8d.dir
+      size: 19606537
+      nfiles: 7
     - path: ./scripts/train_model.py
       hash: md5
-      md5: 4295315f4f782f67de00c166141b46e1
-      size: 7713
+      md5: 29d55095230d2ca8358f614d94f1fcd4
+      size: 7749
     - path: ./src/shakespeare/torch_model.py
       hash: md5
       md5: b20b29b52fa6733ad186347e3c6208ba
@@ -111,11 +111,11 @@ stages:
     outs:
     - path: ./outs/model
       hash: md5
-      md5: 14972d8251fedb2c09e9a9a2be2400fe.dir
+      md5: 5b1ac32d984a8c6c47b115a24154e12d.dir
       size: 20537767
       nfiles: 3
     - path: ./outs/training_artefacts
       hash: md5
-      md5: 0e11c8801028f925b83bb28e8fbbb2c2.dir
+      md5: 3de19ecde4d9db23b6b39d3a56775d4c.dir
       size: 205380450
       nfiles: 33
