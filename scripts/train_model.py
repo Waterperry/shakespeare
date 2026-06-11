@@ -171,13 +171,13 @@ def main(
     for epoch in range(curr_epoch, params["num_epochs"]):
         model.train()
         train_dataset = train_dataset.shuffle(params["random_seed"] + epoch)
-        train_dataloader = DataLoader(train_dataset, batch_size=params["batch_size"], collate_fn=collate_fn, drop_last=True)  # pyright: ignore[reportArgumentType]
+        train_dataloader = DataLoader(train_dataset, batch_size=params["batch_size"], collate_fn=collate_fn)  # pyright: ignore[reportArgumentType]
         loss = train_epoch(epoch, model, tokenizer, train_dataloader, device, loss_fn, optim)
 
         if epoch % 5 == 0:
             model.save_pretrained(artefacts_dir.joinpath(f"model_{epoch}"))
             model.eval()
-            val_dataloader = DataLoader(val_dataset, batch_size=params["batch_size"], collate_fn=collate_fn, drop_last=True)  # pyright: ignore[reportArgumentType]
+            val_dataloader = DataLoader(val_dataset, batch_size=params["batch_size"], collate_fn=collate_fn)  # pyright: ignore[reportArgumentType]
             val_loss = val_epoch(epoch, model, tokenizer, val_dataloader, device, loss_fn)
             summary_writer.add_scalars("loss", {"val": val_loss, "train": loss}, global_step=epoch)
         else:
