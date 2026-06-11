@@ -1,4 +1,5 @@
 [core]
     autostage = true
+    remote = local
 ['remote "local"']
     url = ssh://beast-ub.local:22/dvc

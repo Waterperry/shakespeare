@@ -8,7 +8,7 @@ from typing import Any, Callable
 import numpy as np
 import torch
 
-from datasets import DatasetDict
+from datasets import DatasetDict, disable_caching
 from dvc import api
 from fire import Fire
 from rich.console import Console
@@ -23,6 +23,8 @@ from shakespeare.constants import ATTENTION_STYLE, INFO_STYLE, WARNING_STYLE
 from shakespeare.utils import batch_to, get_truthy
 from shakespeare.torch_model import Model
 
+
+disable_caching()
 
 @torch.no_grad
 def generate_from_scratch(
