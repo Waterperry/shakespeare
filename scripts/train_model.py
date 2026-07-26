@@ -1,7 +1,7 @@
 import os
 import re
 
-from itertools import zip_longest
+from itertools import repeat
 from pathlib import Path
 from random import seed
 from typing import Callable
@@ -52,10 +52,10 @@ def generate_from_scratch(
     sen_parts = tokenizer.convert_ids_to_tokens(sen_tok_ids[0])
     if not colorize:
         return "".join(sen_parts)
-    colours = ["red", "green"]
+    colours = repeat(["red", "green"])
 
     out: str = ""
-    for color, sen_part in zip_longest(colours, sen_parts):
+    for color, sen_part in zip(colours, sen_parts):
         out += f"[{color}]{sen_part}[/{color}]"
     return out
 
