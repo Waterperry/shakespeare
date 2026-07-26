@@ -17,7 +17,7 @@ def _padding_collate_fn(
 ) -> dict[str, Tensor]:
     stack_keys = [
         "input_ids",
-        "attention_mask",
+        # "attention_mask",
         # "token_type_ids",
     ]
 
@@ -28,14 +28,9 @@ def _padding_collate_fn(
             collated_tensors[k].append(tokenized[k][:max_sequence_length])
 
     # TODO: time this against the other method (torch.pad + torch.stack)
-    rv = {
+    return {
         "input_ids": nested_tensor(collated_tensors["input_ids"], layout=torch.jagged).to_padded_tensor(pad_token_id),
-        "attention_mask": nested_tensor(collated_tensors["attention_mask"], layout=torch.jagged).to_padded_tensor(
-            0 if collated_tensors["attention_mask"][0].dtype == torch.bool else float("-inf")
-        ),
     }
-    return rv
-
 
 
 class Model(nn.Module, PyTorchModelHubMixin):

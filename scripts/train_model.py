@@ -169,7 +169,7 @@ def main(
     console.print(f"Using device {device}", style=INFO_STYLE)
     console.print(params, style=INFO_STYLE)
 
-    dataset = DatasetDict.load_from_disk(input_path).with_format("torch").select_columns(["input_ids", "attention_mask"])
+    dataset = DatasetDict.load_from_disk(input_path).with_format("torch").select_columns(["input_ids"])
     train_dataset = dataset["train"]
     val_dataset = dataset["test"]
     tokenizer = AutoTokenizer.from_pretrained("./outs/tokenizer")
