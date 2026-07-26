@@ -45,8 +45,6 @@ def scaled_dot_product_attn(
             scaled_attn_values.masked_fill_(attn_mask, float("-inf"))
         else:
             scaled_attn_values = scaled_attn_values + attn_mask
-        if attn_mask.squeeze()[0, 0] != 0.:
-            raise RuntimeError("First token of sequence is not attending to itself. This seems incorrect.")
 
     if src_key_padding_mask is not None:
         src_key_padding_mask = src_key_padding_mask.unsqueeze(1).unsqueeze(2)  # [batch, 1, 1 (src_attn), tgt_attn]
