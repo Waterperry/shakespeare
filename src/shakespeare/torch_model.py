@@ -119,11 +119,12 @@ class Model(nn.Module, PyTorchModelHubMixin):
 
     def embed(self, x: Tensor, pad_token_id: int | None = None) -> tuple[Tensor, Tensor]:
         seq_len = x.size(1)
+        x_emb = self._embedding(x)
         if self._use_custom_pos_enc:
-            x_emb = self._pos_encoding(x)  # the custom PosEnc layer takes the actual token embeddings
+            x_emb = self._pos_encoding(x_emb)  # the custom PosEnc layer takes the actual token embeddings
         else:
             positions = torch.arange(seq_len, device=x.device).unsqueeze(0)
-            x_emb = self._embedding(x) + self._pos_encoding(positions)
+            x_emb = x_emb + self._pos_encoding(positions)
 
         causal_mask = nn.Transformer.generate_square_subsequent_mask(seq_len, device=x.device)
 
