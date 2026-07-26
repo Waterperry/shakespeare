@@ -28,10 +28,13 @@ def _padding_collate_fn(
             collated_tensors[k].append(tokenized[k][:max_sequence_length])
 
     # TODO: time this against the other method (torch.pad + torch.stack)
-    return {
-        k: nested_tensor(vs, layout=torch.jagged).to_padded_tensor(pad_token_id)
-        for k, vs in collated_tensors.items()
+    rv = {
+        "input_ids": nested_tensor(collated_tensors["input_ids"], layout=torch.jagged).to_padded_tensor(pad_token_id),
+        "attention_mask": nested_tensor(collated_tensors["attention_mask"], layout=torch.jagged).to_padded_tensor(
+            0 if collated_tensors["attention_mask"][0].dtype == torch.bool else float("-inf")
+        ),
     }
+    return rv
 
 
 
@@ -96,7 +99,7 @@ class Model(nn.Module, PyTorchModelHubMixin):
         seq_len = x.size(1)
         x_emb = self._embedding(x)
         if self._use_custom_pos_enc:
-            x_emb = x_emb + self._pos_encoding(x_emb)  # the custom PosEnc layer takes the actual token embeddings
+            x_emb = self._pos_encoding(x_emb)  # the custom PosEnc layer takes the actual token embeddings
         else:
             positions = torch.arange(seq_len, device=x.device).unsqueeze(0)
             x_emb = x_emb + self._pos_encoding(positions)  # the nn.Embedding layer takes token indices
@@ -116,8 +119,12 @@ class Model(nn.Module, PyTorchModelHubMixin):
 
     def embed(self, x: Tensor, pad_token_id: int | None = None) -> tuple[Tensor, Tensor]:
         seq_len = x.size(1)
-        positions = torch.arange(seq_len, device=x.device).unsqueeze(0)
-        x_emb = self._embedding(x) + self._pos_encoding(positions)
+        if self._use_custom_pos_enc:
+            x_emb = self._pos_encoding(x)  # the custom PosEnc layer takes the actual token embeddings
+        else:
+            positions = torch.arange(seq_len, device=x.device).unsqueeze(0)
+            x_emb = self._embedding(x) + self._pos_encoding(positions)
+
         causal_mask = nn.Transformer.generate_square_subsequent_mask(seq_len, device=x.device)
 
         src_key_padding_mask: Tensor | None = None
