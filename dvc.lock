@@ -85,24 +85,24 @@ stages:
       nfiles: 7
     - path: ./scripts/train_model.py
       hash: md5
-      md5: 29d55095230d2ca8358f614d94f1fcd4
-      size: 7749
+      md5: 0a136f78a25ad2ac428ea067871d60f9
+      size: 7822
     - path: ./src/shakespeare/torch_model.py
       hash: md5
-      md5: b20b29b52fa6733ad186347e3c6208ba
-      size: 3669
+      md5: 59ad67edbda838c5663bd5102532685d
+      size: 6365
     params:
       params.yaml:
         train:
-          batch_size: 64
-          num_epochs: 50
+          batch_size: 16
+          num_epochs: 1
           random_seed: 42
           learning_rate: 0.0001
           model_init_params:
-            embed_dim: 256
+            embed_dim: 32
             num_heads: 8
-            num_decoder_layers: 6
-            ffn_dim: 1024
+            num_decoder_layers: 3
+            ffn_dim: 128
             max_seq_len: 512
             dropout: 0.1
             use_rope_emb: false
@@ -111,11 +111,11 @@ stages:
     outs:
     - path: ./outs/model
       hash: md5
-      md5: 5b1ac32d984a8c6c47b115a24154e12d.dir
-      size: 20537767
+      md5: c47886e3ff3e1a7671bd6dfff581e036.dir
+      size: 355709
       nfiles: 3
     - path: ./outs/training_artefacts
       hash: md5
-      md5: 3de19ecde4d9db23b6b39d3a56775d4c.dir
-      size: 205380450
-      nfiles: 33
+      md5: 1bc7000efeb5b0c3c20e40a439ee364a.dir
+      size: 356053
+      nfiles: 6

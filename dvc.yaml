@@ -39,3 +39,28 @@ stages:
     outs:
       - ./outs/training_artefacts
       - ./outs/model
+
+  generate_embeddings:
+    cmd: >
+      python3 scripts/generate_embeddings.py
+      --model-path ./outs/model
+      --input-path ./data/tokenized
+      --output-path ./data/embedded
+    deps:
+      - ./outs/model
+      - ./data/tokenized
+    outs:
+      - ./data/embedded
+
+  train_sae:
+    cmd: >
+      python3 ./scripts/train_sae.py
+      --dataset-path ./data/embedded
+      --tokenizer-path ./outs/tokenizer
+      --model-output-path ./outs/sae
+    deps:
+      - ./outs/model
+    outs:
+      - ./outs/sae
+    params:
+      - train_sae

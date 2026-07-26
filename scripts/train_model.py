@@ -3,7 +3,7 @@ import re
 
 from pathlib import Path
 from random import seed
-from typing import Any, Callable
+from typing import Callable
 
 import numpy as np
 import torch
@@ -19,7 +19,7 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from transformers import AutoTokenizer, PreTrainedTokenizerFast
 
-from shakespeare.constants import ATTENTION_STYLE, INFO_STYLE, WARNING_STYLE
+from shakespeare.constants import INFO_STYLE, WARNING_STYLE
 from shakespeare.utils import batch_to, get_truthy
 from shakespeare.torch_model import Model
 
@@ -48,7 +48,7 @@ def generate_from_scratch(
             break
 
     return "".join(tokenizer.convert_ids_to_tokens(sen_tok_ids[0]))
-    
+
 
 def try_parse_epoch_from_path(path: str) -> int | None:
     maybe_match = re.search(r"model_(\d+)", path)
@@ -164,6 +164,8 @@ def main(
     tokenizer = AutoTokenizer.from_pretrained("./outs/tokenizer")
     if model is None:
         model = Model(vocab_size=vocab_size, **params["model_init_params"])
+    model = model.to("cpu")
+    model.save_pretrained(model_output_path)
     model = model.to(device)
     collate_fn = model.get_collate_function(pad_token_id=tokenizer.pad_token_id)
     # drop last so we can use a fixed-size BOS-prefix tensor in the training loop
