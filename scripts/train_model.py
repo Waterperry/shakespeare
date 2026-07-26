@@ -55,7 +55,7 @@ def generate_from_scratch(
     colours = ["red", "green"]
 
     out: str = ""
-    for color, sen_part in zip(colours, sen_parts):
+    for color, sen_part in zip_longest(colours, sen_parts):
         out += f"[{color}]{sen_part}[/{color}]"
     return out
 
