@@ -1,7 +1,7 @@
 import os
 import re
 
-from itertools import repeat
+from itertools import cycle
 from pathlib import Path
 from random import seed
 from typing import Callable
@@ -52,7 +52,7 @@ def generate_from_scratch(
     sen_parts = tokenizer.convert_ids_to_tokens(sen_tok_ids[0])
     if not colorize:
         return "".join(sen_parts)
-    colours = repeat(["red", "green"])
+    colours = cycle(["red", "green"])
 
     out: str = ""
     for color, sen_part in zip(colours, sen_parts):
