@@ -1,6 +1,7 @@
 import os
 import re
 
+from itertools import zip_longest
 from pathlib import Path
 from random import seed
 from typing import Callable
@@ -34,6 +35,7 @@ def generate_from_scratch(
     device: torch_device,
     temperature: float = 0.8,
     top_k: int = 50,
+    colorize: bool = False,
 ) -> str:
     sen_tok_ids: list[list[int]] = [[tokenizer.bos_token_id]]  # pyright: ignore[reportAssignmentType]
     while len(sen_tok_ids[0]) < max_len:
@@ -47,7 +49,16 @@ def generate_from_scratch(
         if out_id == tokenizer.eos_token_id:
             break
 
-    return "".join(tokenizer.convert_ids_to_tokens(sen_tok_ids[0]))
+    sen_parts = tokenizer.convert_ids_to_tokens(sen_tok_ids[0])
+    if not colorize:
+        return "".join(sen_parts)
+    colours = ["red", "green"]
+
+    out: str = ""
+    for color, sen_part in zip(colours, sen_parts):
+        out += f"[{color}]{sen_part}[/{color}]"
+    return out
+
 
 
 def try_parse_epoch_from_path(path: str) -> int | None:
@@ -187,7 +198,7 @@ def main(
         else:
             summary_writer.add_scalars("loss", {"train": loss}, global_step=epoch)
 
-        generated = generate_from_scratch(model, tokenizer, 100, device)
+        generated = generate_from_scratch(model, tokenizer, 100, device, colorize=True)
         console.print(f"{epoch:0>5} | {loss:.3e} | {generated}")
 
     model.save_pretrained(model_output_path)
